@@ -33,14 +33,34 @@ try {
 // REST API for analysis
 app.post("/api/analyze", async (req, res) => {
   const { ticker } = req.body;
+  const customApiKey = req.headers["x-gemini-key"];
+  const finalApiKey = (typeof customApiKey === "string" ? customApiKey : "") || process.env.GEMINI_API_KEY;
   
   if (!ticker || typeof ticker !== "string" || ticker.trim().length === 0) {
     return res.status(400).json({ error: "A valid stock ticker is required." });
   }
 
-  if (!ai) {
+  let requestAi: GoogleGenAI | null = null;
+  if (finalApiKey) {
+    try {
+      requestAi = new GoogleGenAI({
+        apiKey: finalApiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Failed to initialize GoogleGenAI with request api key:", err);
+    }
+  }
+
+  const activeAi = requestAi || ai;
+
+  if (!activeAi) {
     return res.status(500).json({ 
-      error: "Gemini AI client is not configured. Please add your GEMINI_API_KEY in the Settings > Secrets panel." 
+      error: "Gemini AI client has no configured key. Please supply your personal free API Key in the custom key drawer above to run checks completely free of charge." 
     });
   }
 
@@ -205,8 +225,15 @@ Return ONLY the raw JSON block without markdown formatting or other chatter. Do 
     }
   } catch (error: any) {
     console.error("Error analyzing ticker:", error);
+    let errorMessage = error?.message || String(error);
+    
+    // Check for common quota / rate limits / 429 errors
+    if (errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("RESOURCE_EXHAUSTED")) {
+      errorMessage = "Gemini API Free Tier limits exceeded. To completely resolve this and run unlimited checks at $0 cost, please generate your own free personal API Key on https://aistudio.google.com/ and set it as GEMINI_API_KEY in the Secrets panel.";
+    }
+    
     res.status(500).json({ 
-      error: error?.message || "An unexpected error occurred during stock analysis." 
+      error: errorMessage
     });
   }
 });

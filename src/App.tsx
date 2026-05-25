@@ -36,8 +36,10 @@ export default function App() {
   const [report, setReport] = useState<ChecklistReport | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [currentQuoteIdx, setCurrentQuoteIdx] = useState(0);
+  const [customKey, setCustomKey] = useState("");
+  const [showKeyConfig, setShowKeyConfig] = useState(false);
 
-  // Load history from localStorage
+  // Load history & Custom Key from localStorage
   useEffect(() => {
     const saved = localStorage.getItem("ticker_analyzer_history");
     if (saved) {
@@ -46,6 +48,10 @@ export default function App() {
       } catch (e) {
         // ignore
       }
+    }
+    const savedKey = localStorage.getItem("custom_gemini_api_key");
+    if (savedKey) {
+      setCustomKey(savedKey);
     }
   }, []);
 
@@ -75,9 +81,13 @@ export default function App() {
     setTicker(symbol.toUpperCase().trim());
 
     try {
+      const savedKey = localStorage.getItem("custom_gemini_api_key") || "";
       const response = await fetch("/api/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(savedKey ? { "X-Gemini-Key": savedKey } : {})
+        },
         body: JSON.stringify({ ticker: symbol }),
       });
 
@@ -95,6 +105,11 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveKey = (val: string) => {
+    setCustomKey(val);
+    localStorage.setItem("custom_gemini_api_key", val.trim());
   };
 
   const clearHistory = () => {
@@ -172,6 +187,62 @@ export default function App() {
                     {s}
                   </button>
                 ))}
+              </div>
+
+              {/* Collapsible Personal Gemini Key config block */}
+              <div className="pt-4 border-t border-[#111111]/10">
+                <button
+                  type="button"
+                  onClick={() => setShowKeyConfig(!showKeyConfig)}
+                  className="font-mono text-[10px] text-[#111111]/60 hover:text-[#111111] hover:underline uppercase tracking-wider flex items-center gap-1.5"
+                >
+                  <span>{showKeyConfig ? "[ - ] Hide Personal Key Settings (Optional)" : "[ + ] Configure Personal Gemini Key / Free Tier Bypass"}</span>
+                </button>
+                
+                <AnimatePresence>
+                  {showKeyConfig && (
+                    <motion.div
+                      style={{ originY: 0 }}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden mt-3 pt-2.5 text-[11px] font-mono space-y-2.5 border-t border-dashed border-[#111111]/15"
+                    >
+                      <p className="text-[#111111]/65 font-serif leading-relaxed text-[11px]">
+                        If running on personal custom domains (such as Render) or experiencing rate-limits, paste your personal free Gemini API Key below. This key is saved locally in your browser cache (<code className="bg-[#111111]/5 px-1 py-0.5 text-[10px]">localStorage</code>) and is supplied server-side over secure on-the-fly lookups.
+                      </p>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="password"
+                          value={customKey}
+                          onChange={(e) => handleSaveKey(e.target.value)}
+                          placeholder="PASTE YOUR FREE GEMINI API KEY HERE (AIzaSy...)"
+                          className="flex-1 bg-white border border-[#111111]/35 px-3 py-2 text-[10px] text-[#111111] font-mono tracking-widest placeholder:text-[#111111]/25 focus:outline-none focus:border-[#111111]"
+                        />
+                        {customKey && (
+                          <button
+                            type="button"
+                            onClick={() => handleSaveKey("")}
+                            className="text-[#b22222] hover:underline uppercase font-bold text-[10px] shrink-0"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-[#111111]/50 pt-1">
+                        <a 
+                          href="https://aistudio.google.com/app/apikey" 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="underline hover:text-[#111111] font-serif italic"
+                        >
+                          Generate a free API key at Google AI Studio &rarr;
+                        </a>
+                        <span className="font-bold uppercase tracking-wider">{customKey ? "✓ Custom Key Active" : "Default Server Key"}</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 

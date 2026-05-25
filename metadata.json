@@ -1,0 +1,6 @@
+{
+  "name": "Investment Checklist Stock Analyzer",
+  "description": "A New Yorker styled minimalist Stock Analyzer using classic value investing checklists from Munger, Buffett, Graham and other investment legends.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

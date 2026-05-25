@@ -193,7 +193,7 @@ export interface ChecklistReport {
 Return ONLY the raw JSON block without markdown formatting or other chatter. Do not wrap it in anything other than a clean JSON block if possible, but if you do use markdown, write exactly \`\`\`json <JSON object> \`\`\`. Write the executive summary in an elegant, sophisticated literary prose (like the New Yorker magazine), emphasizing patience, Margin of Safety, and intellectual skepticism.
 `;
 
-    const response = await ai.models.generateContent({
+    const response = await activeAi.models.generateContent({
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {

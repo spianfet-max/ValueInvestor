@@ -193,14 +193,34 @@ export interface ChecklistReport {
 Return ONLY the raw JSON block without markdown formatting or other chatter. Do not wrap it in anything other than a clean JSON block if possible, but if you do use markdown, write exactly \`\`\`json <JSON object> \`\`\`. Write the executive summary in an elegant, sophisticated literary prose (like the New Yorker magazine), emphasizing patience, Margin of Safety, and intellectual skepticism.
 `;
 
-    const response = await activeAi.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-        temperature: 0.2, // slightly conservative to keep calculations grounded
-      },
-    });
+    let response;
+    try {
+      response = await activeAi.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          temperature: 0.2, // slightly conservative to keep calculations grounded
+        },
+      });
+    } catch (searchError: any) {
+      console.warn("Gemini with search grounding failed or was rate-limited. Falling back to search-less generation:", searchError);
+      
+      const fallbackPrompt = prompt + "\n\nNOTE: Google Search Grounding is currently rate-limited or unavailable. Please complete this analysis using your latest internal financial knowledge of the ticker up to your knowledge cutoff. Safely estimate any missing details if absolutely necessary, and clearly note in the report that search grounding was disabled.";
+      
+      try {
+        response = await activeAi.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: fallbackPrompt,
+          config: {
+            temperature: 0.2,
+          },
+        });
+      } catch (fallbackError: any) {
+        // If even fallback fails, throw the original searchError to be caught by the outer block
+        throw searchError;
+      }
+    }
 
     let rawText = response.text || "";
     // Clean up any potential markdown prefix/suffix
